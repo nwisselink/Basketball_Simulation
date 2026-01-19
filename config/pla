@@ -1,0 +1,107 @@
+import random
+import math
+
+class PlayerGenerator:
+    def __init__(self, seed=None):
+        self.rng = random.Random(seed)
+        self.define_name()
+    # ---------------------------
+    # Measurables
+    # ---------------------------
+    def define_name(self):
+        self.name="Placeholder"
+        self.age=20
+    def generate_measurables(self):
+        """
+        Height in inches, weight in pounds
+        NBA-ish distributions with soft bounds
+        """
+        height = self._truncated_normal(mean=79, std=3.5, low=72, high=87)
+        weight_mean = 3.1 * height - 100
+        weight = self._truncated_normal(mean=weight_mean, std=18, low=170, high=300)
+
+        return {
+            "height": round(height, 1),
+            "weight": round(weight, 1)
+        }
+
+    # ---------------------------
+    # Ratings
+    # ---------------------------
+    def generate_ratings(self, measurables):
+        height = measurables["height"]
+        weight = measurables["weight"]
+
+        size_factor = (height - 79) / 4     # roughly -2 to +2
+        mass_factor = (weight - 215) / 30   # roughly -1.5 to +2.5
+
+        base = self._base_rating()
+
+        ratings = {
+            "shooting": self._rating(base, -0.5 * size_factor),
+            "finishing": self._rating(base, 0.7 * size_factor),
+            "ball_handling": self._rating(base, -0.6 * size_factor),
+            "passing": self._rating(base, -0.2 * size_factor),
+            "perimeter_defense": self._rating(base, -0.3 * size_factor),
+            "interior_defense": self._rating(base, 0.8 * size_factor + 0.4 * mass_factor),
+            "rebounding": self._rating(base, 0.9 * size_factor + 0.6 * mass_factor),
+            "speed": self._rating(base, -0.7 * mass_factor),
+            "strength": self._rating(base, 1.0 * mass_factor),
+            "stamina": self._rating(base, self.rng.gauss(0, 0.2))
+        }
+
+        return ratings
+
+    # ---------------------------
+    # Public API
+    # ---------------------------
+    
+
+    # ---------------------------
+    # Internals
+    # ---------------------------
+    def _base_rating(self):
+        """
+        Centered ~100 with realistic spread.
+        Allows stars and scrubs.
+        """
+        return self._truncated_normal(mean=100, std=12, low=65, high=135)
+
+    def _rating(self, base, modifier):
+        noise = self.rng.gauss(0, 6)
+        return round(base + modifier * 10 + noise, 1)
+
+    def _truncated_normal(self, mean, std, low, high):
+        while True:
+            value = self.rng.gauss(mean, std)
+            if low <= value <= high:
+                return value
+
+
+    def __str__(self):
+        lines = []
+
+        header = self.name
+        if self.age is not None:
+            header += f" (Age {self.age})"
+
+        lines.append(header)
+        lines.append("-" * len(header))
+
+        # Measurables
+        m = self.measurables
+        lines.append(
+            f"Height: {m['height']} in | "
+            f"Weight: {m['weight']} lbs"
+        )
+
+        lines.append("")
+
+        # Ratings (sorted, readable)
+        for rating, value in sorted(self.ratings.items()):
+            lines.append(f"{rating.replace('_', ' ').title():<22}: {value:>5}")
+
+        return "\n".join(lines)
+
+player=PlayerGenerator()
+print(player)
